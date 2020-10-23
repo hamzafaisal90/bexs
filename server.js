@@ -1,7 +1,12 @@
+
 const fs = require('fs')
+var express = require("express");
+var app = express();
 const csv = require('csv-parser')
 const graph = new Map();
 const address = [];
+let path = [];
+let shortest ;
 
 function graphNode(name, weight){
   this.name = name;
@@ -10,7 +15,50 @@ function graphNode(name, weight){
   this.visited = false;
 }
 
-fs.createReadStream('input-routes.csv')
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+});
+app.get('/:start/:end', function (req, res) {
+  // find an object from `data` array match by `id`
+ 
+  shortest = readFile(req,res)
+  console.log("shortest",shortest);
+//     if object found return an object else return 404 not-found
+//     if (shortest) {
+//        console.log("inside if");
+//        res.status(200).json(shortest);
+//     } else {
+//        res.sendStatus(404);
+//    }
+});
+app.post('/:to/:from/:price', function (req, res) {
+  // insert into csv file
+  const filename = "input-routes.csv"; 
+  let writeit = [
+    to = req.params.to,
+    from =req.params.from,
+    weight =req.params.price
+  ]
+  fs.open(filename, "a", (err, fd)=>{ 
+    if(err){ 
+        console.log(err.message); 
+    }else{ 
+        fs.write(fd, "\n" + writeit,(err, bytes)=>{ 
+            if(err){ 
+                console.log(err.message); 
+                res.status(400).send(err.message)
+            }else{ 
+                console.log(bytes +' bytes written');
+                res.status(200).send('Saved Successfully') 
+            } 
+        })         
+    } 
+  }) 
+});
+
+function readFile(req,res){
+  
+  fs.createReadStream('input-routes.csv')
   .pipe(csv())
   .on('data', function (row) {
       if(graph.has(row.from)){
@@ -28,19 +76,26 @@ fs.createReadStream('input-routes.csv')
       }
   })
   .on('end', function () {
-
-    let startNode = graph.get("asd")
-    let endNode = graph.get("SCL")
+    console.log("params",req.params.start,req.params.end);
+    let startNode = graph.get(req.params.start)
+    let endNode = graph.get(req.params.end)
 
     if(!startNode || !endNode)
     {
       console.error("Invalid input")
     }else
-      getBestRoute(graph, startNode, endNode)
-   
+    console.log(req.params)
+    console.log(res)
+      path = getBestRoute(graph, startNode, endNode)
+      res.status(200).send(JSON.stringify(path))
+      console.log("path",path)
+    
   })
+ 
+}
 
-  function getBestRoute(graph, startNode, endNode) {
+function getBestRoute(graph, startNode, endNode) {
+    
     let visited = {};
     let unvisted = {};
 
@@ -53,7 +108,6 @@ fs.createReadStream('input-routes.csv')
     let current = startNode[0];
     current.distance = 0;
     resultSet.set(current.name, {distance: 0, previous: null})
-    let res;
 
     while(Object.keys(unvisted).length > 0){
      
@@ -102,6 +156,8 @@ fs.createReadStream('input-routes.csv')
     console.log("End Node: ", endNode[0].name)
     console.log("Current Node: ", current)
     shortestPath.push(endNode[0].name)
+    let cost = current.distance
+
 
     console.log("cost: ", current.distance)
 
@@ -115,4 +171,9 @@ fs.createReadStream('input-routes.csv')
     shortestPath.push(startNode[0].name)
     shortestPath.reverse()
     console.log("shortest: ", shortestPath)
+    return {shortestPath, cost}
+    // res.status(200).send('ok');
   }
+  module.exports = {
+     readFile
+  };
